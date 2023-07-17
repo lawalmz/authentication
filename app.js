@@ -5,7 +5,9 @@ const { MongoClient } = require('mongodb');
 const bodyParser = require('body-parser');
 const { default: mongoose } = require('mongoose');
 const ejs = require('ejs');
-const encrypt = require('mongoose-encryption');
+//const encrypt = require('mongoose-encryption');
+const md5 = require('md5')
+
 
 
 const app = express();
@@ -22,7 +24,7 @@ const userSchema = new mongoose.Schema({
 });
 
 
-userSchema.plugin(encrypt,{secret:process.env.SECRET,encryptedFields:['password']})
+//userSchema.plugin(encrypt,{secret:process.env.SECRET,encryptedFields:['password']})
 
 const User = new mongoose.model("User",userSchema);
 
@@ -45,41 +47,45 @@ app.get('/Register', (req, res) => {
 
 
 
-app.post('/register',async (req,res) =>{
+app.post('/register', (req,res) =>{
     const email = req.body.username;
-    const password = req.body.password;
+    const password = md5(req.body.password);
+    const passwordagain = md5(req.body.passwordagain);
 
-    try {
-        const existingItem = await User.findOne({ email });
-    
-        if (existingItem) {
-          // Item already exists in the cart
-          console.log("user already exist")
-        }else{
-            const newUser = new User({
-                email:email,
-                password:password
-              });
-          
-              await newUser.save();
-              res.redirect("/login");
-        }
-    
-       
-    
-       
-       
+
+    User.findOne({email:email}).then((foundUser) => {
         
-      } catch (error) {
-        console.error('Error adding item to cart:', error);
-        res.status(404).send('An error occurred');
-      }
+        if (foundUser){
+            console.log('already have an accounct (:')
+        }else{
+
+            if(password === passwordagain){
+                const newUser = new User({
+                    email:email,
+                    password:password
+                  });
+              
+                newUser.save();
+                res.redirect("/login");
+            }else{
+                console.log("passwords does not match :(")
+            }
+           
+        }
+        
+      
+      
+    });
+
+
+
+
 })
 
 app.post('/login',async(req, res)=>{
 
     const email = req.body.username;
-    const password = req.body.password;
+    const password = md5(req.body.password);
 
 
     User.findOne({email:email}).then((foundUser) => {
@@ -88,7 +94,6 @@ app.post('/login',async(req, res)=>{
 
             if(foundUser.password === password){
                 res.render("secrets")
-                console.log(foundUser.password)
             }else{
                 console.log("wrong password :(")
             }
