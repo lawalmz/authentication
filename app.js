@@ -6,7 +6,9 @@ const bodyParser = require('body-parser');
 const { default: mongoose } = require('mongoose');
 const ejs = require('ejs');
 //const encrypt = require('mongoose-encryption');
-const md5 = require('md5')
+//const md5 = require('md5')
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 
 
@@ -49,11 +51,48 @@ app.get('/Register', (req, res) => {
 
 app.post('/register', (req,res) =>{
     const email = req.body.username;
-    const password = md5(req.body.password);
-    const passwordagain = md5(req.body.passwordagain);
+    const password = req.body.password;
+    const passwordagain = req.body.passwordagain;
+
+    if (password === passwordagain){
+
+        bcrypt.hash(password,saltRounds,function(err,hash){
+      
+
+            User.findOne({email:email}).then((foundUser) => {
+
+                if (foundUser){
+                    console.log('already have an accounct (:')
+                }else{ 
+                    
+                        const newUser = new User({
+                            email:email,
+                            password:hash
+                          });
+                      
+                        newUser.save();
+                        res.redirect("/login");
+                   
+                   
+                }
+    
+            });
+
+        
+
+       
+    })
+
+    }else{
+        console.log("passwords does not match :(")
+        res.redirect("/register")
+
+    }
+
+ 
 
 
-    User.findOne({email:email}).then((foundUser) => {
+   /* User.findOne({email:email}).then((foundUser) => {
         
         if (foundUser){
             console.log('already have an accounct (:')
@@ -75,7 +114,7 @@ app.post('/register', (req,res) =>{
         
       
       
-    });
+    });*/
 
 
 
@@ -85,25 +124,34 @@ app.post('/register', (req,res) =>{
 app.post('/login',async(req, res)=>{
 
     const email = req.body.username;
-    const password = md5(req.body.password);
+    const password = req.body.password;
 
+    
 
-    User.findOne({email:email}).then((foundUser) => {
+        User.findOne({email:email}).then((foundUser) => {
         
-        if (foundUser){
+            if (foundUser){
 
-            if(foundUser.password === password){
-                res.render("secrets")
+                bcrypt.compare(password,foundUser.password,function(err,result){
+                    if( result=== true){
+                        res.render("secrets")
+                    }else{
+                        res.render("/login");
+                        console.log("wrong password :(")
+    
+                    }
+                })
+    
+               
             }else{
-                console.log("wrong password :(")
+                console.log("Dont have an account :(")
             }
-        }else{
-            console.log("Dont have an account :(")
-        }
-        
-      
-      
-    });
+            
+          
+          
+        });
+    
+   
 })
 
 
